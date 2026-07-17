@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "env": {
+    "REACT_APP_SUPABASE_URL": "https://idnjwreqywswlflckmrm.supabase.co",
+    "REACT_APP_SUPABASE_ANON_KEY": "sb_publishable_WQRQ9bWISu_1OR-QFtD-5A_cTeyHqKh"
+  }
+}

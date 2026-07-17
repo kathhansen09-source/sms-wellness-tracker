@@ -45,10 +45,12 @@ export default function Login({ onLogin }: LoginProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <img
-            src="/assets/sms-logo.svg"
-            alt="skin.mind.soul — wellness & beauty"
-            className="w-56 mx-auto mb-4 brightness-0 invert"
+            src="/assets/sms-mono.svg"
+            alt=""
+            className="w-24 h-24 mx-auto mb-4 brightness-0 invert"
           />
+          <h1 className="text-4xl text-white mb-1 italic">skin.mind.soul</h1>
+          <p className="text-[#B9D1DB] tracking-[0.3em] uppercase text-xs mb-3">Wellness &amp; Beauty</p>
           <p className="text-[#EFE8DA] tracking-widest uppercase text-sm">Content Tracker</p>
         </div>
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Filter, Eye } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -31,7 +30,6 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [showPromptForm, setShowPromptForm] = useState(false);
-  const [selectedWorld, setSelectedWorld] = useState<'ATMOSPHERE' | 'TRANSFORMATION' | 'AUTHORITY' | 'PEOPLE'>('ATMOSPHERE');
   const [filterWorld, setFilterWorld] = useState<string>('ALL');
 
   const [newPrompt, setNewPrompt] = useState({

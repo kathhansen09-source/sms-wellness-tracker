@@ -110,7 +110,7 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
       <div className="bg-white border-b border-[#E5DDD0] p-6 sticky top-0 z-20">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
-            <img src="/assets/sms-mono.svg" alt="" className="h-9 w-9" />
+            <img src="/assets/sms-ribbon.png" alt="" className="h-9 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-[#0F3D2C]">skin.mind.soul</h1>
               <p className="text-sm text-[#666] tracking-wide">This Week's Content Tasks</p>

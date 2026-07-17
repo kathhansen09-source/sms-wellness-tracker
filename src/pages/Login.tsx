@@ -45,9 +45,9 @@ export default function Login({ onLogin }: LoginProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <img
-            src="/assets/sms-mono.svg"
+            src="/assets/sms-ribbon.png"
             alt=""
-            className="w-24 h-24 mx-auto mb-4 brightness-0 invert"
+            className="w-40 h-auto mx-auto mb-4 brightness-0 invert"
           />
           <h1 className="text-4xl text-white mb-1 italic">skin.mind.soul</h1>
           <p className="text-[#B9D1DB] tracking-[0.3em] uppercase text-xs mb-3">Wellness &amp; Beauty</p>

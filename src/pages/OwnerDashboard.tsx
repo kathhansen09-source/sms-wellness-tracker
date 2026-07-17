@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Check, X } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface OwnerDashboardProps {
   onLogout: () => void;
@@ -11,64 +12,47 @@ interface Capture {
   pillar: string;
   type: string;
   status: string;
-  date: string;
+  created_at: string;
   notes: string;
   uploaded_by: string;
+  file_url: string | null;
 }
+
+const WORLD_META = [
+  { name: 'ATMOSPHERE', desc: 'Space, light, hands, calm' },
+  { name: 'TRANSFORMATION', desc: 'Before-afters as stories' },
+  { name: 'AUTHORITY', desc: 'Education, the why' },
+  { name: 'PEOPLE', desc: 'Therapists, reviews' },
+] as const;
 
 export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
   const [tab, setTab] = useState<'gallery' | 'progress' | 'pending'>('gallery');
   const [captures, setCaptures] = useState<Capture[]>([]);
+  const [monthlyTargets, setMonthlyTargets] = useState<Record<string, number>>({
+    ATMOSPHERE: 3, TRANSFORMATION: 2, AUTHORITY: 3, PEOPLE: 2,
+  });
+  const [loading, setLoading] = useState(true);
   const [filterWorld, setFilterWorld] = useState<string>('ALL');
 
-  const worlds = [
-    { name: 'ATMOSPHERE', desc: 'Space, light, hands, calm' },
-    { name: 'TRANSFORMATION', desc: 'Before-afters as stories' },
-    { name: 'AUTHORITY', desc: 'Education, the why' },
-    { name: 'PEOPLE', desc: 'Therapists, reviews' },
-  ];
-
-  const monthlyTargets = {
-    ATMOSPHERE: 3,
-    TRANSFORMATION: 2,
-    AUTHORITY: 3,
-    PEOPLE: 2,
-  };
-
   useEffect(() => {
-    setCaptures([
-      {
-        id: '1',
-        world: 'ATMOSPHERE',
-        pillar: 'MIND',
-        type: 'photo',
-        status: 'approved',
-        date: '2024-07-15',
-        notes: 'Perfect soft lighting',
-        uploaded_by: 'Sarah',
-      },
-      {
-        id: '2',
-        world: 'TRANSFORMATION',
-        pillar: 'SKIN',
-        type: 'video',
-        status: 'draft',
-        date: '2024-07-16',
-        notes: 'Client testimonial video',
-        uploaded_by: 'Emma',
-      },
-      {
-        id: '3',
-        world: 'AUTHORITY',
-        pillar: 'SKIN',
-        type: 'video',
-        status: 'approved',
-        date: '2024-07-14',
-        notes: 'Serum explanation',
-        uploaded_by: 'Teagan',
-      },
-    ]);
+    loadAll();
   }, []);
+
+  const loadAll = async () => {
+    setLoading(true);
+    const [capturesRes, targetsRes] = await Promise.all([
+      supabase.from('captures').select('*').order('created_at', { ascending: false }),
+      supabase.from('monthly_targets').select('*').eq('month', new Date().toISOString().slice(0, 7)),
+    ]);
+
+    if (capturesRes.data) setCaptures(capturesRes.data as Capture[]);
+    if (targetsRes.data && targetsRes.data.length > 0) {
+      const targets: Record<string, number> = {};
+      targetsRes.data.forEach((t: any) => { targets[t.world] = t.target; });
+      setMonthlyTargets(targets);
+    }
+    setLoading(false);
+  };
 
   const filteredCaptures = filterWorld === 'ALL'
     ? captures
@@ -83,12 +67,14 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
     PEOPLE: captures.filter(c => c.world === 'PEOPLE' && c.status === 'approved').length,
   };
 
-  const handleApprove = (id: string) => {
+  const handleApprove = async (id: string) => {
     setCaptures(captures.map(c => c.id === id ? {...c, status: 'approved'} : c));
+    await supabase.from('captures').update({ status: 'approved' }).eq('id', id);
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
     setCaptures(captures.map(c => c.id === id ? {...c, status: 'rejected'} : c));
+    await supabase.from('captures').update({ status: 'rejected' }).eq('id', id);
   };
 
   return (
@@ -139,7 +125,9 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {tab === 'gallery' && (
+        {loading && <p className="text-[#666]">Loading...</p>}
+
+        {!loading && tab === 'gallery' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-[#0F3D2C]">Approved Content</h2>
@@ -157,6 +145,9 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
             </div>
 
             <div className="space-y-3">
+              {filteredCaptures.filter(c => c.status === 'approved').length === 0 && (
+                <p className="text-[#999] italic">No approved content yet.</p>
+              )}
               {filteredCaptures.filter(c => c.status === 'approved').map(capture => (
                 <div key={capture.id} className="bg-white rounded-lg p-4 border border-[#E5DDD0]">
                   <div className="flex items-center justify-between">
@@ -170,8 +161,13 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
                           Approved
                         </span>
                       </div>
-                      <p className="text-[#666] text-sm">By {capture.uploaded_by} · {capture.date}</p>
+                      <p className="text-[#666] text-sm">By {capture.uploaded_by} · {new Date(capture.created_at).toLocaleDateString()}</p>
                       <p className="text-sm text-[#999] mt-1">{capture.notes}</p>
+                      {capture.file_url && (
+                        <a href={capture.file_url} target="_blank" rel="noreferrer" className="text-sm text-[#0F3D2C] underline">
+                          View file
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -180,9 +176,12 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
           </div>
         )}
 
-        {tab === 'pending' && (
+        {!loading && tab === 'pending' && (
           <div>
             <h2 className="text-2xl font-bold text-[#0F3D2C] mb-6">Pending Review ({pendingCaptures.length})</h2>
+            {pendingCaptures.length === 0 && (
+              <p className="text-[#999] italic">Nothing waiting on review.</p>
+            )}
             <div className="space-y-4">
               {pendingCaptures.map(capture => (
                 <div key={capture.id} className="bg-white rounded-lg p-6 border border-[#E5DDD0]">
@@ -197,8 +196,13 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
                           Pending
                         </span>
                       </div>
-                      <p className="text-[#666] text-sm">By {capture.uploaded_by} · {capture.date}</p>
+                      <p className="text-[#666] text-sm">By {capture.uploaded_by} · {new Date(capture.created_at).toLocaleDateString()}</p>
                       <p className="text-sm text-[#999] mt-1">{capture.notes}</p>
+                      {capture.file_url && (
+                        <a href={capture.file_url} target="_blank" rel="noreferrer" className="text-sm text-[#0F3D2C] underline">
+                          View file
+                        </a>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-3">
@@ -223,21 +227,21 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
           </div>
         )}
 
-        {tab === 'progress' && (
+        {!loading && tab === 'progress' && (
           <div>
             <h2 className="text-2xl font-bold text-[#0F3D2C] mb-6">Monthly Progress</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {worlds.map(world => (
+              {WORLD_META.map(world => (
                 <div key={world.name} className="bg-white rounded-lg p-6 border border-[#E5DDD0]">
                   <h3 className="font-bold text-[#0F3D2C] mb-2">{world.name}</h3>
                   <p className="text-3xl font-bold text-[#0F3D2C] mb-2">
-                    {approvedByWorld[world.name as keyof typeof approvedByWorld]}/{monthlyTargets[world.name as keyof typeof monthlyTargets]}
+                    {approvedByWorld[world.name as keyof typeof approvedByWorld]}/{monthlyTargets[world.name] ?? 0}
                   </p>
                   <div className="w-full bg-[#E5DDD0] rounded-full h-2">
                     <div
                       className="bg-[#0F3D2C] h-2 rounded-full transition-all"
                       style={{
-                        width: `${(approvedByWorld[world.name as keyof typeof approvedByWorld] / monthlyTargets[world.name as keyof typeof monthlyTargets]) * 100}%`
+                        width: `${Math.min(100, (approvedByWorld[world.name as keyof typeof approvedByWorld] / (monthlyTargets[world.name] || 1)) * 100)}%`
                       }}
                     />
                   </div>

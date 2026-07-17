@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, LogOut, MessageCircle, Send } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface TeamCaptureProps {
   teamCode: string | null;
@@ -15,58 +16,43 @@ interface Prompt {
   example: string;
 }
 
+interface UploadedItem {
+  id: string;
+  promptTitle: string;
+  file_name: string;
+  type: string;
+  notes: string;
+  created_at: string;
+  status: string;
+}
+
 export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  const [uploadedItems, setUploadedItems] = useState<any[]>([]);
+  const [uploadedItems, setUploadedItems] = useState<UploadedItem[]>([]);
   const [showUploadForm, setShowUploadForm] = useState(false);
-  const [comments, setComments] = useState<{[key: string]: string[]}>({});
+  const [uploading, setUploading] = useState(false);
+  const [comments, setComments] = useState<{[key: string]: {author: string; text: string}[]}>({});
   const [newComment, setNewComment] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
-    type: 'photo' as 'photo' | 'video',
+    type: 'photo' as 'photo' | 'video' | 'testimonial',
     videoLength: 'short',
     notes: '',
     file: null as File | null,
   });
 
-  // Sample prompts for this week
   useEffect(() => {
-    setPrompts([
-      {
-        id: '1',
-        world: 'ATMOSPHERE',
-        pillar: 'MIND',
-        title: 'Golden Hour Hands',
-        description: 'Film hands during facial in golden hour light, showing care & technique. Maps to MIND pillar (emotional safety).',
-        example: 'Warm light on hands during a facial treatment, client peaceful in background',
-      },
-      {
-        id: '2',
-        world: 'TRANSFORMATION',
-        pillar: 'SKIN',
-        title: 'Before-After Story',
-        description: 'Capture client before & after, ask how they FEEL about results. Maps to SKIN pillar (clinical results).',
-        example: '"I can finally use products again without burning" — 6 weeks of tailored care',
-      },
-      {
-        id: '3',
-        world: 'AUTHORITY',
-        pillar: 'SKIN',
-        title: 'Why This Serum',
-        description: 'Record Teagan explaining why we chose this serum over trendy alternatives. Maps to SKIN pillar (expertise).',
-        example: 'Real ingredient list. Real results. Real reasons Teagan stands by it.',
-      },
-      {
-        id: '4',
-        world: 'PEOPLE',
-        pillar: 'SOUL',
-        title: 'Client Testimonial',
-        description: 'Get therapist or client testimonial on video. Maps to SOUL pillar (connection & local).',
-        example: 'Haven\'t felt this release in years. Teagan\'s hands, Teagan\'s care, Teagan\'s skill.',
-      },
-    ]);
+    loadPrompts();
   }, []);
+
+  const loadPrompts = async () => {
+    setLoading(true);
+    const { data } = await supabase.from('prompts').select('*').order('created_at', { ascending: false });
+    if (data) setPrompts(data as Prompt[]);
+    setLoading(false);
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -74,31 +60,67 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
     }
   };
 
-  const handleUpload = () => {
-    if (selectedPrompt && formData.file) {
-      const prompt = prompts.find(p => p.id === selectedPrompt);
-      setUploadedItems([...uploadedItems, {
-        id: Date.now().toString(),
-        promptId: selectedPrompt,
-        prompt: prompt,
-        file: formData.file.name,
+  const handleUpload = async () => {
+    if (!selectedPrompt || !formData.file) return;
+    const prompt = prompts.find(p => p.id === selectedPrompt);
+    if (!prompt) return;
+
+    setUploading(true);
+
+    const path = `${Date.now()}_${formData.file.name}`;
+    const { error: uploadError } = await supabase.storage.from('captures').upload(path, formData.file);
+
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message);
+      setUploading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from('captures').getPublicUrl(path);
+
+    const { data, error } = await supabase.from('captures').insert({
+      prompt_id: prompt.id,
+      world: prompt.world,
+      pillar: prompt.pillar,
+      type: formData.type,
+      video_length: formData.type === 'video' ? formData.videoLength : null,
+      status: 'draft',
+      file_url: urlData.publicUrl,
+      file_name: formData.file.name,
+      notes: formData.notes,
+      uploaded_by: teamCode || 'Team',
+    }).select();
+
+    setUploading(false);
+
+    if (!error && data) {
+      setUploadedItems([{
+        id: data[0].id,
+        promptTitle: prompt.title,
+        file_name: formData.file.name,
         type: formData.type,
-        videoLength: formData.videoLength,
         notes: formData.notes,
-        date: new Date().toLocaleDateString(),
-        status: 'pending',
-      }]);
+        created_at: data[0].created_at,
+        status: 'draft',
+      }, ...uploadedItems]);
       setFormData({type: 'photo', videoLength: 'short', notes: '', file: null});
       setSelectedPrompt(null);
       setShowUploadForm(false);
     }
   };
 
-  const addComment = (itemId: string) => {
-    if (newComment.trim()) {
+  const addComment = async (captureId: string) => {
+    if (!newComment.trim()) return;
+    const author = teamCode || 'Team';
+    const { error } = await supabase.from('comments').insert({
+      capture_id: captureId,
+      author,
+      text: newComment,
+    });
+    if (!error) {
       setComments({
         ...comments,
-        [itemId]: [...(comments[itemId] || []), newComment],
+        [captureId]: [...(comments[captureId] || []), { author, text: newComment }],
       });
       setNewComment('');
     }
@@ -140,6 +162,10 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
         {/* Weekly Tasks */}
         <div className="space-y-4 mb-8">
           <h2 className="text-xl font-bold text-[#0F3D2C]">Weekly Tasks</h2>
+          {loading && <p className="text-[#666]">Loading tasks...</p>}
+          {!loading && prompts.length === 0 && (
+            <p className="text-[#999] italic">No tasks set yet — check back soon.</p>
+          )}
           {prompts.map(prompt => (
             <div
               key={prompt.id}
@@ -181,9 +207,11 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
                   <p className={`text-sm mb-2 ${selectedPrompt === prompt.id ? 'text-gray-100' : 'text-[#666]'}`}>
                     {prompt.description}
                   </p>
-                  <p className={`text-xs ${selectedPrompt === prompt.id ? 'text-gray-200' : 'text-[#999]'}`}>
-                    Example: {prompt.example}
-                  </p>
+                  {prompt.example && (
+                    <p className={`text-xs ${selectedPrompt === prompt.id ? 'text-gray-200' : 'text-[#999]'}`}>
+                      Example: {prompt.example}
+                    </p>
+                  )}
                 </div>
                 <div className={`ml-4 p-2 rounded ${selectedPrompt === prompt.id ? 'bg-white/20' : 'bg-[#FAF8F3]'}`}>
                   <Upload size={20} />
@@ -254,9 +282,10 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
               <div className="flex gap-3">
                 <button
                   onClick={handleUpload}
-                  className="flex-1 p-3 bg-[#0F3D2C] text-white rounded-lg font-semibold hover:bg-[#0a2819]"
+                  disabled={uploading || !formData.file}
+                  className="flex-1 p-3 bg-[#0F3D2C] text-white rounded-lg font-semibold hover:bg-[#0a2819] disabled:opacity-50"
                 >
-                  Upload Capture
+                  {uploading ? 'Uploading...' : 'Upload Capture'}
                 </button>
                 <button
                   onClick={() => {
@@ -275,15 +304,15 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
         {/* Uploaded Items */}
         {uploadedItems.length > 0 && (
           <div>
-            <h2 className="text-xl font-bold text-[#0F3D2C] mb-4">Your Uploads This Week</h2>
+            <h2 className="text-xl font-bold text-[#0F3D2C] mb-4">Your Uploads This Session</h2>
             <div className="space-y-4">
               {uploadedItems.map(item => (
                 <div key={item.id} className="bg-white rounded-lg p-6 border border-[#E5DDD0]">
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
-                        <h3 className="font-bold text-[#0F3D2C]">{item.prompt.title}</h3>
-                        <p className="text-sm text-[#666]">{item.file} · {item.date}</p>
+                        <h3 className="font-bold text-[#0F3D2C]">{item.promptTitle}</h3>
+                        <p className="text-sm text-[#666]">{item.file_name} · {new Date(item.created_at).toLocaleDateString()}</p>
                       </div>
                       <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-semibold rounded">
                         {item.status}
@@ -303,7 +332,8 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
                     <div className="space-y-2 mb-3">
                       {comments[item.id]?.map((comment, idx) => (
                         <div key={idx} className="text-sm p-2 bg-[#FAF8F3] rounded text-[#666]">
-                          {comment}
+                          <span className="font-semibold text-[#0F3D2C]">{comment.author}: </span>
+                          {comment.text}
                         </div>
                       ))}
                     </div>

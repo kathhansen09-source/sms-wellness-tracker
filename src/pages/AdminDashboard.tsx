@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Plus, Filter, Eye } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -20,101 +21,76 @@ interface Capture {
   pillar: string;
   type: string;
   status: string;
-  date: string;
+  created_at: string;
   notes: string;
   uploaded_by: string;
+  file_url: string | null;
 }
+
+const WORLD_META = [
+  { name: 'ATMOSPHERE', desc: 'Space, light, hands, calm. Sensory & slow.', pillar: 'MIND' },
+  { name: 'TRANSFORMATION', desc: 'Before-afters as stories with feeling.', pillar: 'SKIN' },
+  { name: 'AUTHORITY', desc: 'Education, the why, expert positioning.', pillar: 'SKIN' },
+  { name: 'PEOPLE', desc: 'Therapists, reviews, human layer.', pillar: 'SOUL' },
+] as const;
 
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [tab, setTab] = useState<'prompts' | 'gallery' | 'progress'>('prompts');
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [captures, setCaptures] = useState<Capture[]>([]);
+  const [monthlyTargets, setMonthlyTargets] = useState<Record<string, number>>({
+    ATMOSPHERE: 3, TRANSFORMATION: 2, AUTHORITY: 3, PEOPLE: 2,
+  });
+  const [loading, setLoading] = useState(true);
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [filterWorld, setFilterWorld] = useState<string>('ALL');
 
   const [newPrompt, setNewPrompt] = useState({
-    world: 'ATMOSPHERE' as const,
-    pillar: 'MIND' as const,
+    world: 'ATMOSPHERE' as Prompt['world'],
+    pillar: 'MIND' as Prompt['pillar'],
     title: '',
     description: '',
     example: '',
   });
 
-  const worlds = [
-    { name: 'ATMOSPHERE', desc: 'Space, light, hands, calm. Sensory & slow.', pillar: 'MIND' },
-    { name: 'TRANSFORMATION', desc: 'Before-afters as stories with feeling.', pillar: 'SKIN' },
-    { name: 'AUTHORITY', desc: 'Education, the why, expert positioning.', pillar: 'SKIN' },
-    { name: 'PEOPLE', desc: 'Therapists, reviews, human layer.', pillar: 'SOUL' },
-  ];
+  useEffect(() => {
+    loadAll();
+  }, []);
 
-  const monthlyTargets = {
-    ATMOSPHERE: 3,
-    TRANSFORMATION: 2,
-    AUTHORITY: 3,
-    PEOPLE: 2,
+  const loadAll = async () => {
+    setLoading(true);
+    const [promptsRes, capturesRes, targetsRes] = await Promise.all([
+      supabase.from('prompts').select('*').order('created_at', { ascending: false }),
+      supabase.from('captures').select('*').order('created_at', { ascending: false }),
+      supabase.from('monthly_targets').select('*').eq('month', new Date().toISOString().slice(0, 7)),
+    ]);
+
+    if (promptsRes.data) setPrompts(promptsRes.data as Prompt[]);
+    if (capturesRes.data) setCaptures(capturesRes.data as Capture[]);
+    if (targetsRes.data && targetsRes.data.length > 0) {
+      const targets: Record<string, number> = {};
+      targetsRes.data.forEach((t: any) => { targets[t.world] = t.target; });
+      setMonthlyTargets(targets);
+    }
+    setLoading(false);
   };
 
-  const addPrompt = () => {
-    if (newPrompt.title && newPrompt.description) {
-      setPrompts([...prompts, {
-        id: Date.now().toString(),
-        ...newPrompt,
-      }]);
-      setNewPrompt({
-        world: 'ATMOSPHERE',
-        pillar: 'MIND',
-        title: '',
-        description: '',
-        example: '',
-      });
+  const addPrompt = async () => {
+    if (!newPrompt.title || !newPrompt.description) return;
+    const { data, error } = await supabase.from('prompts').insert({
+      world: newPrompt.world,
+      pillar: newPrompt.pillar,
+      title: newPrompt.title,
+      description: newPrompt.description,
+      example: newPrompt.example,
+    }).select();
+
+    if (!error && data) {
+      setPrompts([data[0] as Prompt, ...prompts]);
+      setNewPrompt({ world: 'ATMOSPHERE', pillar: 'MIND', title: '', description: '', example: '' });
       setShowPromptForm(false);
     }
   };
-
-  // Sample data for demonstration
-  useEffect(() => {
-    setPrompts([
-      {
-        id: '1',
-        world: 'ATMOSPHERE',
-        pillar: 'MIND',
-        title: 'Golden Hour Hands',
-        description: 'Film hands during facial in golden hour light, showing care & technique',
-        example: 'Warm light on hands during a facial treatment, client peaceful in background',
-      },
-      {
-        id: '2',
-        world: 'TRANSFORMATION',
-        pillar: 'SKIN',
-        title: 'Before-After Story',
-        description: 'Capture client before & after, ask how they FEEL about results',
-        example: '"I can finally use products again without burning" — 6 weeks of tailored care',
-      },
-    ]);
-
-    setCaptures([
-      {
-        id: '1',
-        world: 'ATMOSPHERE',
-        pillar: 'MIND',
-        type: 'photo',
-        status: 'approved',
-        date: '2024-07-15',
-        notes: 'Perfect soft lighting',
-        uploaded_by: 'Sarah',
-      },
-      {
-        id: '2',
-        world: 'TRANSFORMATION',
-        pillar: 'SKIN',
-        type: 'video',
-        status: 'draft',
-        date: '2024-07-16',
-        notes: 'Client testimonial video',
-        uploaded_by: 'Emma',
-      },
-    ]);
-  }, []);
 
   const filteredCaptures = filterWorld === 'ALL' ? captures : captures.filter(c => c.world === filterWorld);
 
@@ -168,7 +144,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto p-6">
-        {tab === 'prompts' && (
+        {loading && <p className="text-[#666]">Loading...</p>}
+
+        {!loading && tab === 'prompts' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-[#0F3D2C]">Weekly Task Prompts</h2>
@@ -188,16 +166,16 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <select
                       value={newPrompt.world}
-                      onChange={(e) => setNewPrompt({...newPrompt, world: e.target.value as any})}
+                      onChange={(e) => setNewPrompt({...newPrompt, world: e.target.value as Prompt['world']})}
                       className="p-3 border border-[#E5DDD0] rounded-lg focus:outline-none focus:border-[#0F3D2C]"
                     >
-                      {worlds.map(w => (
+                      {WORLD_META.map(w => (
                         <option key={w.name} value={w.name}>{w.name}</option>
                       ))}
                     </select>
                     <select
                       value={newPrompt.pillar}
-                      onChange={(e) => setNewPrompt({...newPrompt, pillar: e.target.value as any})}
+                      onChange={(e) => setNewPrompt({...newPrompt, pillar: e.target.value as Prompt['pillar']})}
                       className="p-3 border border-[#E5DDD0] rounded-lg focus:outline-none focus:border-[#0F3D2C]"
                     >
                       <option value="SKIN">SKIN</option>
@@ -243,6 +221,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             )}
 
             <div className="space-y-4">
+              {prompts.length === 0 && (
+                <p className="text-[#999] italic">No prompts yet. Add the first weekly task above.</p>
+              )}
               {prompts.map(prompt => (
                 <div key={prompt.id} className="bg-white rounded-lg p-6 border border-[#E5DDD0] hover:shadow-lg transition">
                   <div className="flex items-start justify-between mb-3">
@@ -259,14 +240,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                     </div>
                   </div>
                   <p className="text-[#666] mb-2">{prompt.description}</p>
-                  <p className="text-sm text-[#999] italic">Example: {prompt.example}</p>
+                  {prompt.example && <p className="text-sm text-[#999] italic">Example: {prompt.example}</p>}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {tab === 'gallery' && (
+        {!loading && tab === 'gallery' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-[#0F3D2C]">Content Gallery</h2>
@@ -287,6 +268,9 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
             </div>
 
             <div className="space-y-3">
+              {filteredCaptures.length === 0 && (
+                <p className="text-[#999] italic">No captures yet.</p>
+              )}
               {filteredCaptures.map(capture => (
                 <div key={capture.id} className="bg-white rounded-lg p-4 border border-[#E5DDD0] hover:shadow-lg transition">
                   <div className="flex items-center justify-between">
@@ -302,12 +286,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                           {capture.status}
                         </span>
                       </div>
-                      <p className="text-[#666] text-sm">Uploaded by {capture.uploaded_by} on {capture.date}</p>
+                      <p className="text-[#666] text-sm">Uploaded by {capture.uploaded_by} on {new Date(capture.created_at).toLocaleDateString()}</p>
                       <p className="text-sm text-[#999] mt-1">{capture.notes}</p>
                     </div>
-                    <button className="ml-4 p-2 hover:bg-[#FAF8F3] rounded">
-                      <Eye size={20} className="text-[#0F3D2C]" />
-                    </button>
+                    {capture.file_url && (
+                      <a href={capture.file_url} target="_blank" rel="noreferrer" className="ml-4 p-2 hover:bg-[#FAF8F3] rounded">
+                        <Eye size={20} className="text-[#0F3D2C]" />
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}
@@ -315,21 +301,21 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
           </div>
         )}
 
-        {tab === 'progress' && (
+        {!loading && tab === 'progress' && (
           <div>
             <h2 className="text-2xl font-bold text-[#0F3D2C] mb-6">Monthly Progress</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {worlds.map(world => (
+              {WORLD_META.map(world => (
                 <div key={world.name} className="bg-white rounded-lg p-6 border border-[#E5DDD0]">
                   <h3 className="font-bold text-[#0F3D2C] mb-2">{world.name}</h3>
                   <p className="text-3xl font-bold text-[#0F3D2C] mb-2">
-                    {capturesByWorld[world.name as keyof typeof capturesByWorld]}/{monthlyTargets[world.name as keyof typeof monthlyTargets]}
+                    {capturesByWorld[world.name as keyof typeof capturesByWorld]}/{monthlyTargets[world.name] ?? 0}
                   </p>
                   <div className="w-full bg-[#E5DDD0] rounded-full h-2">
                     <div
                       className="bg-[#0F3D2C] h-2 rounded-full transition-all"
                       style={{
-                        width: `${(capturesByWorld[world.name as keyof typeof capturesByWorld] / monthlyTargets[world.name as keyof typeof monthlyTargets]) * 100}%`
+                        width: `${Math.min(100, (capturesByWorld[world.name as keyof typeof capturesByWorld] / (monthlyTargets[world.name] || 1)) * 100)}%`
                       }}
                     />
                   </div>

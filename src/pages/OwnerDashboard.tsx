@@ -96,9 +96,12 @@ export default function OwnerDashboard({ onLogout }: OwnerDashboardProps) {
       {/* Header */}
       <div className="bg-white border-b border-[#E5DDD0] p-6">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-3xl font-bold text-[#0F3D2C]">SMS Wellness</h1>
-            <p className="text-sm text-[#666]">Owner Dashboard</p>
+          <div className="flex items-center gap-3">
+            <img src="/assets/sms-mono.svg" alt="" className="h-10 w-10" />
+            <div>
+              <h1 className="text-2xl font-bold text-[#0F3D2C]">skin.mind.soul</h1>
+              <p className="text-sm text-[#666] tracking-wide">Owner Dashboard</p>
+            </div>
           </div>
           <button
             onClick={onLogout}

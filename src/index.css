@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 * {
   margin: 0;
   padding: 0;
@@ -7,20 +11,27 @@
 :root {
   --emerald: #0F3D2C;
   --cream: #EFE8DA;
-  --citron: #D4AF37;
-  --text: #1a1a1a;
-  --border: #E5DDD0;
-  --bg-light: #FAF8F3;
+  --ink: #1A1413;
+  --sky: #B9D1DB;
+  --border: #E0D8C8;
+  --bg-light: #FAF8F2;
+
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Lora', Georgia, 'Times New Roman', serif;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-light);
-  color: var(--text);
+  color: var(--ink);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 code {
@@ -31,10 +42,14 @@ button {
   cursor: pointer;
   border: none;
   font-size: inherit;
-  font-family: inherit;
+  font-family: var(--font-display);
 }
 
 input, textarea, select {
-  font-family: inherit;
+  font-family: var(--font-body);
   font-size: inherit;
+}
+
+label {
+  font-family: var(--font-display);
 }

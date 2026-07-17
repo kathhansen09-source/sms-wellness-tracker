@@ -44,8 +44,12 @@ export default function Login({ onLogin }: LoginProps) {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">SMS Wellness</h1>
-          <p className="text-[#EFE8DA]">Content Tracker</p>
+          <img
+            src="/assets/sms-logo.svg"
+            alt="skin.mind.soul — wellness & beauty"
+            className="w-56 mx-auto mb-4 brightness-0 invert"
+          />
+          <p className="text-[#EFE8DA] tracking-widest uppercase text-sm">Content Tracker</p>
         </div>
 
         {mode === 'select' ? (

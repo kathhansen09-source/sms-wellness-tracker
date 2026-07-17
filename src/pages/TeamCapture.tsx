@@ -109,9 +109,12 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
       {/* Header */}
       <div className="bg-white border-b border-[#E5DDD0] p-6 sticky top-0 z-20">
         <div className="flex justify-between items-center max-w-4xl mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold text-[#0F3D2C]">SMS Wellness</h1>
-            <p className="text-sm text-[#666]">This Week's Content Tasks</p>
+          <div className="flex items-center gap-3">
+            <img src="/assets/sms-mono.svg" alt="" className="h-9 w-9" />
+            <div>
+              <h1 className="text-xl font-bold text-[#0F3D2C]">skin.mind.soul</h1>
+              <p className="text-sm text-[#666] tracking-wide">This Week's Content Tasks</p>
+            </div>
           </div>
           <button
             onClick={onLogout}
@@ -126,7 +129,7 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-6">
         {/* Instructions */}
-        <div className="bg-[#EFE8DA] border border-[#D4AF37] rounded-lg p-4 mb-6">
+        <div className="bg-[#EFE8DA] border border-[#B9D1DB] rounded-lg p-4 mb-6">
           <p className="text-[#0F3D2C] font-semibold mb-2">How This Works:</p>
           <p className="text-[#0F3D2C] text-sm">
             Pick a task below, film or photograph what it asks for, upload it, and add any notes.
@@ -166,7 +169,7 @@ export default function TeamCapture({ teamCode, onLogout }: TeamCaptureProps) {
                     </span>
                     <span className={`px-2 py-1 text-xs font-bold rounded ${
                       selectedPrompt === prompt.id
-                        ? 'bg-white text-[#D4AF37]'
+                        ? 'bg-white text-[#5A7A87]'
                         : 'bg-[#EFE8DA] text-[#0F3D2C]'
                     }`}>
                       {prompt.pillar} Pillar

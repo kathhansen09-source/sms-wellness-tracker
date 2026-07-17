@@ -13,7 +13,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [error, setError] = useState('');
 
   const handleAdminLogin = () => {
-    if (email === 'kath@bubbacloud.com.au' && password === 'SMSWellness2024') {
+    if (email === 'kath@bubbacloud.com.au' && password === 'Emerald-Highlands-47') {
       onLogin('admin');
       setError('');
     } else {
@@ -31,7 +31,7 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   const handleTeamAccess = () => {
-    if (teamCode === 'SMS2024') {
+    if (teamCode === 'ATMOSPHERE47') {
       onLogin('team', teamCode);
       setError('');
     } else {

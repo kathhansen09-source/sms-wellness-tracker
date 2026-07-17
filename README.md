@@ -20,9 +20,9 @@ The strategy is organized around four distinct brand worlds:
 
 ## Access
 
-- **Admin:** Email + password (kath@bubbacloud.com.au / SMSWellness2024)
+- **Admin:** Email + password login (shared privately, not stored here)
 - **Owner:** Email + password login
-- **Team:** Team code (SMS2024)
+- **Team:** Team code (shared privately, not stored here)
 
 ## Setup
 
